@@ -1,0 +1,70 @@
+---
+title: "Consulting Project"
+author: "Jiaqi Sun"
+date: "2022-12-02"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+### Building Model
+We structured a multilevel model for this pilot trail study, the variables we use for multilevel are test (test1 - test n), 
+group, patient_id and score. For the random effect is $(1|patient_{ID})$ and $(0 + test|patient_{ID})$.  
+
+<br>
+
+\vspace{0.5cm}
+| Column            | Description                                         |
+| :--:              | :-----                                              |
+| Y                 | Survey Score                                        |
+| i                 | Patient_id                                          |
+| j                 | Group                                               |
+| $t_k$             | Test                                                |
+| $\alpha_j$        | intercept of random effect of different patients    |
+| $\delta_{ij}$     | intercept of random effect of different patients    |
+| $\beta_c$         | control group slope, we use 0.08 here               |
+| $\gamma_t$        | treatment group effect size, we use 0.2 here        |
+| $\mu_i$           | slope of random effect of different patients        |
+| $e_{ijk}$         | error                                               |
+
+
+$$
+\begin{aligned}
+e_{ijk}\overset{\text{iid}} \sim N(0,\sigma^2_y)\\
+\delta_{ij} \overset{\text{iid}} \sim N(0, \sigma^2_\delta)\\
+\mu \overset{\text{iid}} \sim N(0,\sigma^2_\mu)
+\end{aligned}
+$$
+<br>
+$$
+\begin{aligned}
+Y_{ijk} = &\alpha_j + \delta_{ij} + (\beta_c + \gamma_t + \mu_i) \cdot t_k + e_{ijk}
+\end{aligned}
+$$
+<br>
+
+$$
+\begin{aligned}
+score_{ijk} = &3 + \delta_{ij} + (0.08 + 0.2 + \mu_i) \cdot test + e_{ijk}
+\end{aligned}
+$$
+<br>
+where $\delta_{ij}$ and $\mu_i$ are random effects: $(1|patient_ID)$, $(0 + test|patient_ID)$ 
+
+<br>
+<br>
+
+### Suggestions:
+<br>
+
+Firstly, this is definitely an under power study because the questions are similar and it is the same person answering the questions. 
+As people answering the questions in the sample questionnaire, the answers will be correlated. If we pretend each one is independent, then we underestimate the variability. So the sample size should be larger than the one we gave on the plot.
+
+<br>
+Secondly, there are four repeated measurements in this experiment, some of the surveys are too long and contain similar questions. 
+It's hard for normal people to finish fulfilling in 15 minutes,  not to mention patients with hand joint pain. 
+The patients maybe take the survey seriously at the beginning and then just give random answers. 
+So we suggest to shorten the questionnaire, or pick some of them to represent. 
+
+<br>
+<br>

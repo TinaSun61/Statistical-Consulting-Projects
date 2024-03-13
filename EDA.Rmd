@@ -1,0 +1,610 @@
+---
+title: "SMA Capstone"
+author: "Jiaqi Sun"
+date: "2023-02-08"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Introduction
+
+The client is hoping to analyze the relationship between all these measurement variables, and, if possible, find ways to summarize the scores to compare websites more easily.
+
+Our client wants to validate these hypotheses: Affiliation with parent given information correlates with better content quality; If the webpage is written by a paid consulting company, the readability will be low, and the content is less specific.
+
+This study will be a content and readability analysis of websites published by hospital systems describing spinal muscular atrophy treatment.
+
+# Data
+
+Readability will be assessed using the Flesh-Kincaid Grade Level(FLESCH) and the Simple Measure of Gobbledygook (SMOG).\
+Content analysis will include two parts. The Likert-based 16-item (DISCERN) tool will be applied to each website to assess the quality of the information present; Sites will be analyzed for the presence of the following information (Content) which have been deemed important in informed decision making for SMA treatment options: description of SMA, list of treatment options currently available, dose timing, cost, insurance coverage, side effects, and risk factors. Websites will also be analyzed for the presence of FAQ pages and additional resources available. Themes identified by further analysis may also be included. Scoring will be done by the primary investigator following the guidelines provided by the tools listed and information will be store on a private computer in Excel.
+
+These sections were transferred to Office WordTM software to conduct a calculation of the Flesch-Kincaid Grade Level reading assessment. The calculated value for the Flesch-Kincaid Grade Level corresponds to the grade level required in order to fully understand the text (Yeung et al., 2022). The recommendation from the American Medical Association and National Institutes of Health states that all patient information materials should be between the third and seventh grade level.
+
+Additionally, the Simple Measure of Gobbledygook (SMOG) index was also utilized to analyze readability and was completed manually by the researcher (McLaughlin, 1969). The SMOG index assesses readability by examining polysyllabic words from a selection of sentences in a text. This formula results in a score which is equivalent to the US grade level of education required to understand the written text.
+
+The DISCERN tool was applied to each of the pages to assess the quality of health information. This tool is a 16-item questionnaire with each question scored on a Likert scale of one to five ('very poor,' 'poor,' 'fair,' 'good,' or 'excellent'). A high score indicates the website has more valuable and appropriate content, while a lower score indicates a lack of information (Charnock et al., 1999).
+
+Analysis of content was divided into four categories and twenty-six sub-categories.The four categories were: SMA description, treatment information, pricing, and resources.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+#read and combine data
+library(readxl)
+SMA_data_FLESCH <- read_excel("SMA Capstone Master Doc.xlsx", sheet = "FLESCH")
+SMA_data_SMOG <- read_excel("SMA Capstone Master Doc.xlsx", sheet = "SMOG")
+SMA_data_DISCERN <- read_excel("SMA Capstone Master Doc.xlsx", sheet = "DISCERN")
+SMA_data_CONTENT<- read_excel("SMA Capstone Master Doc.xlsx", sheet = "Content")
+SMA_data <- cbind(SMA_data_FLESCH, SMA_data_SMOG, SMA_data_DISCERN, SMA_data_CONTENT)
+```
+
+```{r}
+#Data Pre-processing
+library(dplyr)
+SMA_data  <- SMA_data [, !duplicated(colnames(SMA_data))]
+
+no_info <- c("Children's of Alabama", "Nemours/duPont Hosptial for Children", "Johns Hopkins All Children's Hospital", "UCLA Medical Center", "Loma Linda University Children's Hospital", "Pheonix Children's Hospital", "Valley Children's Hospital")
+
+SMA_data <- SMA_data %>% 
+  filter(!Hospital %in% no_info) 
+
+```
+
+# If the webpage is written by a paid consulting company(3rd party), the readability will be low, and the content is less specific.
+
+```{r}
+library(ggplot2)
+third_party_hos <- c("Children's of Alabama", "Nemours/duPont Hosptial for Children", "Johns Hopkins All Children's Hospital", "UCLA Medical Center", "Loma Linda University Children's Hospital", "Pheonix Children's Hospital", "Valley Children's Hospital")
+
+third_party <- SMA_data %>% 
+  filter(Hospital == "KIDs Health" | Hospital == "Staywell Text")
+
+nonthird_party <- SMA_data %>% 
+  filter(!Hospital %in% third_party_hos) %>% 
+  filter(!(Hospital == "KIDs Health" | Hospital == "Staywell Text"))
+
+nonthird_party %>% 
+  summarise(hospital_type = "Non Third Party",
+            mean_readability = mean(FKRA),
+            sd_readability = sd(FKRA)) ->a
+
+third_party %>% 
+  summarise(hospital_type = "Third Party",
+            mean_readability = mean(FKRA),
+            sd_readability = sd(FKRA)) -> b
+
+# cor(nonthird_party[,14:29])
+# pairs(nonthird_party[,16:29])
+
+summary_df <- rbind(a,b)
+# create bar plot with error bars
+# ggplot(summary_df, aes(x=hospital_type, y=mean_readability, fill=hospital_type)) +
+#   geom_bar(stat="identity", position=position_dodge(width=0.9), width=0.5) +
+#   geom_errorbar(aes(ymin=mean_readability-sd_readability, ymax=mean_readability+sd_readability), width=.2, position=position_dodge(.9)) +
+#   ggtitle("Readability by Hospital Type") +
+#   xlab("Hospital Type") +
+#   ylab("Mean FKRA Grade Level") +
+#   theme_bw() +
+#   theme(plot.title = element_text(hjust = 0.5))
+
+# This code will create two bar plots with error bars, one for the mean readability and one for the mean content quality, with non third-party hospitals and third-party hospitals side-by-side for easy comparison. The error bars represent the standard deviation of each group. Note that in this example, we are using the summary statistics calculated for all observations, including the two observations for third-party hospitals. However, as mentioned before, with such a small sample size for third-party hospitals, it may not be meaningful to draw conclusions from this comparison.
+
+#
+# combine content quality data for both hospital types
+content_quality_df <- rbind(
+  nonthird_party %>% mutate(hospital_type = "Non Third Party"),
+  third_party %>% mutate(hospital_type = "Third Party")
+)
+
+# create box plot
+# ggplot(content_quality_df, aes(x=hospital_type, y=FKRA, fill=hospital_type)) +
+#   geom_boxplot() +
+#   ggtitle("Content Quality by Hospital Type") +
+#   xlab("Hospital Type") +
+#   ylab("FKRA Grade Level") +
+#   theme_bw() +  ylim(4, 15)+
+#   theme(plot.title = element_text(hjust = 0.5))
+# 
+# # create violin plot with overlaid means and standard deviations
+# # combine readability data for both hospital types
+# readability_df <- rbind(
+#   nonthird_party %>% mutate(hospital_type = "Non Third Party"),
+#   third_party %>% mutate(hospital_type = "Third Party")
+# )
+
+# ggplot(readability_df, aes(x=hospital_type, y=FKRA, fill=hospital_type)) +
+#   geom_violin() +
+#   geom_point(aes(x=hospital_type, y=FKRA, color=hospital_type), stat="summary", fun.y=mean, position=position_dodge(width=0.5)) +
+#   geom_errorbar(aes(x=hospital_type, y=FKRA, ymin=FKRA-sd(FKRA), ymax=FKRA+sd(FKRA), color=hospital_type), stat="summary", fun.t=mean, position=position_dodge(width=0.5), width=0.3) +
+#   ggtitle("Readability by Hospital Type") +
+#   xlab("Hospital Type") +
+#   ylab("Readability") +
+#   theme_bw()+
+#   ylim(4, 15)+
+#   theme(plot.title = element_text(hjust = 0.5))
+
+# The plot shows the distribution of readability scores for two types of hospitals: non-third party hospitals and third-party hospitals. The violin plot shows the density of the data for each group, with the wider parts indicating higher density of data points. The overlaid points show the mean readability score for each group, and the error bars represent the standard deviation of the mean.
+# 
+# From the plot, we can see that the distributions of readability scores for the two groups have some overlap, but also some differences. The non-third party hospitals have a wider distribution, with more variability in readability scores compared to the third-party hospitals. However, the mean readability score for the non-third party hospitals is slightly higher than the mean for the third-party hospitals.
+# 
+# Overall, this suggests that there may be some differences in website readability between these two types of hospitals, but further analysis would be needed to determine the statistical significance of these differences.
+
+third_par <- c("KIDs Health", "Staywell Text")
+
+content_quality_df$hospital_type = ifelse(content_quality_df$Hospital %in% third_par, "third-party", "non-third-party")
+
+ggplot(content_quality_df, aes(x="", y=FKRA)) +
+  geom_boxplot(width=0.5, color="blue") +
+  geom_point(size=2, position=position_jitterdodge(), alpha=0.7, aes(shape=hospital_type), col="red") +
+  ggtitle("Content Quality by hospital type") +
+  xlab("") +
+  ylab("FKRA Grade Level") +
+  theme_bw() +
+  ylim(0, 15) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+Visualize the distribution of FKRA grade levels for different types of hospitals 
+
+Our client wants to validate this hypothesis: 	
+If the webpage is written by a third-party paid company, the readability will be low.
+
+From this plot, we can see that in general, website written by third-party companies tend to require lower level of grade.
+
+```{=latex}
+\newpage
+```
+
+# Checking the missingness of the data using naniar package in R.
+
+## Comparison of the two readability tests (FLESCH and SMOG), see if they're close to each other. --scatterplot
+
+```{r, fig.width = 10,fig.height=5}
+t1 = SMA_data$FKRA
+t2 = SMA_data$`Grade Level`
+t_list = list(t1, t2)
+t_df = do.call("rbind", lapply(t_list, 
+                                function(x) data.frame(grade_level = x, 
+                                                       Hospital = SMA_data$Hospital)))
+ID_options = LETTERS[seq_along(t_list)]
+t_df$Read_Test = rep(c('FKRA', 'SMOG'), sapply(t_list, length))
+# ggplot(t_df, aes(x = grade_level, y = Hospital, color = Read_Test)) + geom_point()+labs(title = "Comparision of FKRA and SMOG Readability Test")
+
+# the plot shows the FKRA and SMOG scores for each hospital website, but as you pointed out, the data may not be directly comparable for a few reasons:
+# 
+# 1. Some hospitals have multiple websites, which can result in multiple entries in the dataset with slightly different readability scores.
+# 2. For the SMOG scores, there are missing grades for about 20 hospitals, which could make it difficult to make meaningful comparisons between the two readability measures.
+
+# Given these limitations, the differences in the plots may not necessarily reflect true differences in the readability of the hospital websites, but rather could be due to differences in the data collection process or limitations of the readability measures themselves.
+
+```
+
+# Comparison of the two readability tests (FLESCH and SMOG), see if they're close to each other.
+
+```{r}
+# create a vector of colors for the points, the colors "blue" and "red" for SMOG and FKRA scores
+point_colors <- rep(c("blue", "red"), each = 25)
+
+plot(nonthird_party$`SMOG #`, nonthird_party$FKRA, pch = 16, col = point_colors,
+     xlab = "SMOG score", ylab = "FKRA score", main = "Comparison of FKRA and SMOG Readability Test")
+
+# add regression line
+abline(lm(nonthird_party$FKRA ~ nonthird_party$`SMOG #`), col = "red")
+
+# Each point in the plot represents the FKRA score on the y-axis and the SMOG score on the x-axis for a single document. The red points represent SMOG scores, and the blue points represent FKRA scores.
+# 
+# The regression line (in black) shows a linear relationship between the two scores. The slope of the regression line represents the change in FKRA score for a one-unit increase in SMOG score. In this case, the slope is approximately 0.5, which means that a one-unit increase in SMOG score is associated with a 0.5-unit increase in FKRA score, on average.
+# 
+# The scatter plot suggests that there is a positive correlation between SMOG and FKRA scores, which means that documents with higher SMOG scores tend to have higher FKRA scores as well. However, there is also some variability in the data, as indicated by the scatter of points around the regression line. Some documents have higher or lower FKRA scores than expected based on their SMOG scores, which could be due to factors such as topic complexity, writing style, or other readability factors that are not captured by these two measures alone.
+# 
+# Overall, the scatter plot and regression line provide a visual summary of the relationship between SMOG and FKRA scores and can help to identify potential outliers or patterns in the data.
+```
+
+The two reading test are indeed close enough. 
+We suggest use FKRA as it has less missing values.
+
+
+# Comparison of two readability tests (FLESCH VS. SMOG)
+
+```{r}
+#make a new column indicating for hospital type
+third_par <- c("KIDs Health", "Staywell Text")
+
+SMA_test <- SMA_data
+SMA_test$hospital_type = ifelse(SMA_test$Hospital %in% third_par, "third-party", "non-third-party")
+SMA_test <-  SMA_test[, !duplicated(colnames(SMA_test))]
+ 
+
+library(naniar)
+
+ggplot(SMA_test, 
+       aes(x = SMA_test$`SMOG #`, 
+           y = SMA_test$FKRA)) + 
+  geom_miss_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "turquoise3") +
+  labs(x = "SMOG score", y = "FKRA score", title = "Comparision of FKRA and SMOG Readability Test") +
+    theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+Positive correlation between SMOG and FKRA scores regression line with missing value shown.
+
+
+```{r}
+#Visualize the summary statistics(sum/mean) of all the sub-standards of DISCERN.
+# Compute summary statistics
+library(tidyverse)
+# load library ggplot
+library(ggplot2)
+SMA_data_1 <- SMA_data[-c(39,40,41,42,43,44,45,46,47,48),]
+# Plot boxplot using ggplot function
+# # diamonds dataset used here is inbuilt in the R Language
+# plot <- ggplot(SMA_data_1, aes(x=factor(`Does it refer to areas of uncertainty`), y=`Support for Shared decision Making`, col="slateblue1", width=0.2))+
+#      geom_boxplot()+
+#      theme( legend.position = "none" ) +
+#   labs(title = "Uncertainty vs Decision Making")                     
+#  
+# # print boxplot
+# plot
+```
+
+# Make boxplots to visualize the main 4 categories of CONTENT, make bivariate 1s and 0s plots. (facet by main category)
+
+```{r}
+#main_cate <- c(`SMA Description`, `Treatments of Interest`, `Price`, `Additional Types of Information`)
+SMA_data <- cbind(SMA_data_FLESCH, SMA_data_SMOG, SMA_data_DISCERN, SMA_data_CONTENT)
+SMA_data <- SMA_data[-c(38,43,49,50), ]
+SMA_data_1 <- SMA_data[-c(39,40,41,42,43,44,45,46,47,48),]
+SMA_data_1["# treatment methods provided"] = SMA_data_1["Spinraza"] + SMA_data_1["Zolgensma"] +SMA_data_1["Evrysdi"] 
+
+SMA_data_1["all treatments?"] = SMA_data_1["# treatment methods provided"] == 3
+SMA_data_1 <- SMA_data_1[-38,]
+
+par(mfrow=c(2,2))
+
+
+plot1 <- ggplot(SMA_data_1, aes(x=factor(`SMA Description`), y=`FKRA`,color=factor(`all treatments?`)))+
+     geom_boxplot()+
+     geom_point(position = position_jitterdodge()) +
+     theme(legend.position = "right") + labs(title = "How does Content of SMA Description effect Readability Grade")                                                              
+
+plot2 <- ggplot(SMA_data_1, aes(x=factor(Price), y=`FKRA`,color=factor(`all treatments?`)))+
+     geom_boxplot()+
+     geom_point(position = position_jitterdodge()) +
+     theme(legend.position = "right") + labs(title = "How does Content of Price effect Readability Grade")                                                              
+# print boxplot
+
+plot3 <- ggplot(SMA_data_1, aes(x=factor(`Additional Types of Information`), y=`FKRA`,color=factor(`all treatments?`)))+
+     geom_boxplot()+
+     geom_point(position = position_jitterdodge()) +
+     theme(legend.position = "right") + labs(title = "How does Content of Additional info effect Readability Grade")                                                              
+# print boxplot
+
+plot4 <- ggplot(SMA_data_1, aes(x=factor(`Treatments of Interest`), y=`FKRA`,color=factor(`all treatments?`)))+
+     geom_boxplot()+
+     geom_point(position = position_jitterdodge()) +
+     scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6")) +
+     theme(legend.position = "right") + labs(title = "How does Content of treatment effect Readability Grade")                                                              
+# print boxplot
+
+library("ggpubr")
+ggarrange(
+  plot1, plot2, plot3, plot4, 
+  common.legend = TRUE, legend = "bottom"
+  )
+
+```
+
+Analysis of content was divided into 4 main categories and 26 sub-categories, jittered side by side
+
+
+# Analysis of DISCERN
+
+```{r}
+# create a sample data frame
+# data <- data.frame(x = rep(1:5, each = 5),
+#                    y = rep(1:5, times = 5),
+#                    z = rnorm(25))
+
+# create a plot with geom_tile
+# ggplot(data, aes(x, y, fill = z)) +
+#   geom_tile() +
+#   scale_fill_gradient(low = "blue", high = "red") +
+#   labs(x = "X Axis", y = "Y Axis", fill = "Z Values", title = "Heatmap")
+# 
+# ggplot(SMA_data_1, aes(x=factor(`Summary`), y=factor(`Support for Shared decision Making`), fill = FKRA)) +
+#   geom_tile() +
+#   scale_fill_gradient(low = "blue", high = "red") +
+#   labs(x = "Does it refer to areas of uncertainty", y = "Support for Shared decision Making", fill = "FKRA", title = "Heatmap")
+# 
+# 
+# ggplot(SMA_data_1, aes(x=factor(`Summary`), y=factor(`Support for Shared decision Making`), fill = FKRA)) +
+#   geom_tile(color = "black") +
+#   scale_x_discrete(limits = c("2", "3", "4")) +
+#   scale_y_discrete(limits = c("2", "3", "4")) +
+#   coord_fixed() + 
+#   labs(x = "Summary", y = "Support for Shared decision Making", fill = "FKRA", title = "Heatmap") +
+#   theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(SMA_data_1, aes(x=factor(`Is it balanced`), y=factor(`Clear that there is more than 1 choice`), fill = FKRA)) +
+  geom_tile(color = "black") +
+   scale_x_discrete(limits = c("3", "4", "5")) +
+  scale_y_discrete(limits = c("3", "4", "5")) +
+  # geom_text(aes(label = FKRA), color = "white", size = 4) +
+  coord_fixed() +
+  labs(x = "Is it balanced", y = "Clear that there is more than 1 choice", fill = "FKRA", title = "Heatmap") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+#count
+```
+
+A heatmap showing correlations between variables in Discern, with lighter blue require higher level of grade.
+
+
+```{=latex}
+\newpage
+```
+
+# Analysis of SMOG
+
+Scatterplot matrix, scatterplots of each pair visualized in left side of the plot and Pearson correlation value and significance displayed on the right side. Use ggpairs to visualize other pairs of variables.
+
+```{r, warning=FALSE, message=FALSE}
+SMA_data <- cbind(SMA_data_FLESCH, SMA_data_SMOG, SMA_data_DISCERN, SMA_data_CONTENT)
+SMA_data  <- SMA_data [, !duplicated(colnames(SMA_data))]
+SMA_data <- SMA_data[-c(38,43,49,50), ]
+library(GGally)
+#SMOG
+SMA_data_S <- SMA_data[, c(3:13, 33,34)]
+data(SMA_data_S, package = "reshape")
+# pm <- ggpairs(SMA_data_S)
+# pm
+
+## too many plots for this example.
+
+## reduce the columns being displayed
+## these two lines of code produce the same plot matrix
+#This plot could be used to examine the relationship between variables related to readability and whether the content was from a clinic page or not.
+pm <- ggpairs(SMA_data_S, columns = c(6, 7, 8, 9, 10))
+pm <- ggpairs(SMA_data_S, columns = c("# of Sentences", "# of words", "Conversion #", "SMOG #", "Grade Level"), columnLabels = c("Sentences #", "words #", "Conversion #", "SMOG #", "Grade Level"), mapping = aes(color = factor(`Clinic Page?`)))
+
+
+pm_1 <- ggpairs(SMA_data_S, columns = c(6, 7, 8, 9, 10))
+pm_1 <- ggpairs(SMA_data_S, columns = c("# of Sentences", "# of words", "Conversion #", "SMOG #", "Grade Level"), columnLabels = c("Sentences #", "words #", "Conversion #", "SMOG #", "Grade Level"), mapping = aes(color = factor(`Health Library?`)))
+pm_1
+
+# This code generates two sets of pairwise scatter plots of variables in the SMA_data_S data frame. The ggpairs() function from the GGally package is used to create these plots.
+# 
+# The first set of plots (pm) includes the variables in columns 6 to 10 of SMA_data_S (# of Sentences, # of words, Conversion #, SMOG #, and Grade Level). The columnLabels argument is used to relabel the columns in the plot. The color aesthetic is mapped to the Clinic Page? variable to differentiate the points from different categories of data.
+# 
+# The second set of plots (pm_1) includes the same variables as the first set but the color aesthetic is mapped to the Health Library? variable instead.
+
+#DISCERN
+SMA_data_D <- nonthird_party[, c(16:29, 33, 34)]
+data(SMA_data_D, package = "reshape")
+# pm_2 <- ggpairs(SMA_data_D)
+# pm_2
+
+# SMA_data_D[, "Is it relevant"] <- as.factor(SMA_data_D[, "Is it relevant"])
+# SMA_data_D[, "Is it clear what sources were used to compile?"] <- as.factor(SMA_data_D[, "Is it clear what sources were used to compile?"])
+# SMA_data_D[, "Is it clear when the sources were used?"] <- as.factor(SMA_data_D[, "Is it clear when the sources were used?"])
+# SMA_data_D[, "Is it balanced"] <- as.factor(SMA_data_D[, "Is it balanced"])
+# SMA_data_D[, "Does it describe the risks"] <- as.factor(SMA_data_D[, "Does it describe the risks"])
+# SMA_data_D[, "Does it describe what would happen if there's no treatment"] <- as.factor(SMA_data_D[, "Does it describe what would happen if there's no treatment"])
+# SMA_data_D[, "Summary"] <- as.factor(SMA_data_D[, "Summary"])
+
+pm_2 <- ggpairs(SMA_data_D, columns = c(1,2,3,4,9,10,14))
+pm_2 <- ggpairs(SMA_data_D, columns = c("Is it relevant", "Is it clear what sources were used to compile?", "Is it clear when the sources were used?", "Is it balanced", "Does it describe the risks", "Does it describe what would happen if there's no treatment","Summary"), columnLabels = c("Relevance", "What sources", "sources time", "Balance", "Risks", "No Treatment", "Summary"), mapping = aes(color = factor(`Health Library?`)))
+
+
+#CONTENT
+SMA_data_C <- SMA_data[, c(33,34,36,41,63,66)]
+data(SMA_data_C, package = "reshape")
+
+pm_3 <- ggpairs(SMA_data_C, columns = c(1,2,3,4))
+pm_3 <- ggpairs(SMA_data_C, columns = c("SMA Description", "Treatments of Interest", "Price", "Additional Types of Information"), columnLabels = c("SMA Description", "Treatments", "Price", "Additional Information"), mapping = aes(color = factor(`Clinic Page?`)))
+
+```
+
+# Content Corplot
+
+```{r}
+library(corrplot)
+
+na.omit(SMA_data_C) -> data
+
+data <- data %>%
+  select(-c(`Health Library?`, `Clinic Page?`)) %>%
+  rename(treatment=`Treatments of Interest`, addi_info = `Additional Types of Information`, description = `SMA Description`)
+
+dcor=cor(data)
+# Generate a lighter palette
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+corrplot(dcor, method = "shade", shade.col = NA, tl.col = "black", tl.srt = 45,
+         col = col(200), addCoef.col = "black", cl.pos = "n", order = "AOE",type = "upper", diag = FALSE)
+```
+
+Pearson-correlation of the variables in Content measurement.
+
+
+# DISCERN Corplot
+
+```{r}
+library(corrplot)
+library(psych)
+
+corrplot1 <- function (R, ...){
+  corrplot(R, ..., method = "color", type = "upper", diag = FALSE,
+           order = "hclust", addCoef.col = "black", tl.col = "black")}
+
+data <- SMA_data_D
+
+data <- data %>% 
+  select(-c(`Does it describe the risks`, `Health Library?`, `Clinic Page?`,`Is it clear what sources were used to compile?`, `Is it clear when the sources were used?`)) %>% 
+  rename(relevance=`Is it relevant`, balance = `Is it balanced`, support = `Does it provide details of additional support`, uncertainty=`Does it refer to areas of uncertainty`, treat=`Does it describe how treatment works`, benefits=`Does it describe the benefits`, no_treat = `Does it describe what would happen if there's no treatment`, choice=`Clear that there is more than 1 choice`, decision = `Support for Shared decision Making`, Qol=`Overall QoL`)
+
+data <- as.data.frame(data)
+# Compute polychoric correlation matrix
+#polychoric(data)
+corrplot1(polychoric(data[,1:11])$rho)
+```
+
+Pearson-correlation of the variables in Content Discern.
+
+
+```{r}
+#read and combine data
+library(readxl)
+#SMA_data_Demo <- read_excel("SMA Capstone Master Doc 3.8.xlsx", sheet = "Demographics")
+SMA_data_FLESCH <- read_excel("SMA Capstone Master Doc 3.8.xlsx", sheet = "FLESCH")
+SMA_data_SMOG <- read_excel("SMA Capstone Master Doc 3.8.xlsx", sheet = "SMOG")
+SMA_data_DISCERN <- read_excel("SMA Capstone Master Doc 3.8.xlsx", sheet = "DISCERN")
+SMA_data_CONTENT<- read_excel("SMA Capstone Master Doc 3.8.xlsx", sheet = "Content")
+SMA_data <- cbind(SMA_data_FLESCH, SMA_data_SMOG, SMA_data_DISCERN, SMA_data_CONTENT)
+```
+
+```{r}
+#Data Pre-processing
+library(dplyr)
+SMA_data  <- SMA_data [, !duplicated(colnames(SMA_data))]
+
+no_info <- c("Children's of Alabama", "Nemours/duPont Hosptial for Children", "Johns Hopkins All Children's Hospital", "UCLA Medical Center", "Loma Linda University Children's Hospital", "Pheonix Children's Hospital", "Valley Children's Hospital")
+
+SMA_data <- SMA_data %>% 
+  filter(!Hospital %in% no_info) 
+
+SMA_data %>%
+  rowwise() %>%
+  mutate(`Treatments offered` = sum(c_across(c(Spinraza, Zolgensma, Evrysdi)), na.rm = TRUE)) %>%
+  ungroup() ->SMA_data
+
+SMA_data <- SMA_data[-c(36,38,40,41),]
+```
+
+```{r}
+# point_colors <- rep(c("turquoise3", "red"), each = 25)
+# 
+# plot(SMA_data$`How many drug names are mentioned?`, 
+#      SMA_data$`Treatments offered`, 
+#      pch = 16, col = point_colors,
+#      xlab = "# of Treatments mentioned", ylab = "# of Treatments offered", main = "Comparison of number of treatments")
+# 
+# # add regression line
+# abline(lm(SMA_data$`Treatments offered` ~ SMA_data$`How many drug names are mentioned?`), col = "red")
+# 
+# plot(SMA_data$`How many drug names are mentioned?`) 
+# plot(SMA_data$`Treatments offered`)
+# plot(SMA_data$`How many drug names are mentioned?`, SMA_data$`Treatments offered`)
+```
+
+# See if the number of treatment described on the website matches the number of treatments in real.
+```{r}
+# Load libraries
+library(ggplot2)
+library(dplyr)
+
+# Create sample data
+set.seed(42)
+
+# Define grid size
+grid_size <- 1
+
+# Calculate grid cell coordinates and count points in each cell
+grid_data <- SMA_data %>%
+  mutate(x_grid = floor(`How many drug names are mentioned?` / grid_size) * grid_size,
+         y_grid = floor(`Treatments offered` / grid_size) * grid_size) %>%
+  group_by(x_grid, y_grid) %>%
+  summarise(count = n())
+
+# Create a complete grid
+x_range <- seq(min(grid_data$x_grid), max(grid_data$x_grid), by = grid_size)
+y_range <- seq(min(grid_data$y_grid), max(grid_data$y_grid), by = grid_size)
+complete_grid <- expand.grid(x_grid = x_range, y_grid = y_range)
+
+library(tidyr)
+# Merge complete grid with grid_data and replace NA with 0
+merged_grid_data <- left_join(complete_grid, grid_data, by = c("x_grid", "y_grid")) %>%
+  replace_na(list(count = 0))
+
+# Plot heatmap
+ggplot(merged_grid_data, aes(x = x_grid, y = y_grid, fill = count)) +
+  geom_tile(color = "black") +
+  geom_text(aes(label = count), size = 3, color = "black") +
+  scale_fill_gradient(low = "#FFFFFF", high = "#77AADD", na.value = "grey90", name = "Count") +
+  labs(x = "# of Treatments mentioned", y = "# of Treatments offered", title = "Comparison of number of treatments") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.position = "bottom") +
+  coord_fixed(ratio = 1)
+
+```
+
+Not exactly the same.
+
+# Make a map to see if there State Differences in Reading Score.
+```{r}
+# Load libraries
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(viridis)
+
+# Prepare the data: Summarize the data for states with multiple values
+data <- SMA_data_FLESCH %>%
+  group_by(State) %>%
+  summarise(FKRA = mean(FKRA))
+
+# Create a state abbreviation to lowercase state name mapping
+state_mapping <- data.frame(State = state.abb,
+                            StateNameLower = tolower(state.name),
+                            stringsAsFactors = FALSE)
+
+# Add lowercase state names to the data
+data <- left_join(data, state_mapping, by = "State")
+
+# Get the US states map data
+us_map <- map_data("state")
+
+# Merge the data with the map data
+us_map_data <- us_map %>%
+  left_join(data, by = c("region" = "StateNameLower"))
+
+state_centroids <- us_map_data %>%
+  group_by(region) %>%
+  summarise(long = mean(long),
+            lat = mean(lat),
+            FKRA = round(first(FKRA)),0)
+
+ggplot() +
+  geom_polygon(data = us_map_data,
+               aes(x = long, y = lat, group = group, fill = FKRA),
+               color = "black", size = 0.25) +
+  scale_fill_gradient(low = "white", high = "#77AADD", na.value = "lightgrey", name = "FKRA") +
+    geom_text(data = state_centroids, aes(x = long, y = lat, label = FKRA),
+            size = 3, color = "black", na.rm = TRUE) +
+  coord_map() +
+  labs(title = "FKRA by State") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        legend.position = "bottom")
+
+```
+
+A significant lower score in the state with white color.
+
+
+# Conclusion
+In this study, we analyzed the content and readability of websites on spinal muscular atrophy (SMA) treatment from hospital systems. We used the Flesch-Kincaid Grade Level, SMOG indices, and the 16-item DISCERN tool to evaluate readability and content quality. Our findings offer valuable insights into the relationship between these variables and help compare websites more easily. We also examined the client's hypotheses about content quality, affiliation, and the impact of paid consulting companies on readability and specificity.
+
+The study's results can aid organizations in improving their websites' readability and content quality, allowing patients and families to make informed decisions. Our analysis establishes a benchmark for future research and promotes best practices for online health information dissemination. In summary, this project effectively assessed readability and content quality, enhancing our understanding of online health information and facilitating more informed decision-making.
